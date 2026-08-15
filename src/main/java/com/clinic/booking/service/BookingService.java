@@ -40,14 +40,6 @@ public class BookingService {
 
     private static final int MAX_DAYS_AHEAD = 6;
 
-    /**
-     * requestingAccountId is the account making the request, per the JWT -
-     * REQUIRED and enforced for PATIENT bookings (ownership of beneficiaryId
-     * is verified against it), and deliberately null/unused for ADMIN
-     * walk-in bookings, since AdminService creates its own Beneficiary
-     * under an Account it just created/found by phone - "ownership" isn't
-     * a meaningful concept for that flow the same way.
-     */
     @Transactional
     public BookingResult bookSlot(Long beneficiaryId, LocalDate date, BookedBy bookedBy, Long requestingAccountId) {
 
@@ -64,13 +56,6 @@ public class BookingService {
             return new BookingResult.InvalidDate("The clinic is closed on Sundays - please choose another date.");
         }
 
-        // Ownership check - ONLY for patient-initiated bookings. This is
-        // the actual security fix for this session: previously any
-        // authenticated (or even unauthenticated) caller could pass ANY
-        // beneficiaryId and book against it, regardless of who it
-        // belonged to. A valid JWT alone doesn't fix that - it only
-        // proves who's asking, not that they're allowed to book for
-        // this specific beneficiary.
         if (bookedBy == BookedBy.PATIENT) {
             Beneficiary beneficiary = beneficiaryRepository.findById(beneficiaryId).orElse(null);
             if (beneficiary == null || !beneficiary.getAccount().getId().equals(requestingAccountId)) {
@@ -124,7 +109,16 @@ public class BookingService {
         return new BookingResult.Success(queueNumber);
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * FIXED: was @Transactional(readOnly = true). This method can trigger a
+     * WRITE via getOrCreateForDate() the first time any given date is
+     * requested (creating that date's DailyConfig row) - readOnly=true was
+     * incorrect from the start, since "get or CREATE" is not read-only by
+     * definition. Postgres enforces readOnly transactions strictly (unlike
+     * some other databases/configs that silently ignore the hint), which
+     * is exactly why this surfaced now on Neon and not necessarily before.
+     */
+    @Transactional
     public DailyStatusResponse getDailyStatus(LocalDate date) {
         DailyConfig config = dailyConfigService.getOrCreateForDate(date);
 
