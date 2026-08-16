@@ -5,19 +5,21 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Response for POST /auth/login.
- *
- * Two distinct shapes depending on requiresOtp:
- * - requiresOtp = true  -> patient flow. token/role are null. Client should
- *   now call POST /auth/verify-otp with the code logged server-side (stub).
- * - requiresOtp = false -> admin flow matched. token/role are populated
- *   immediately - no OTP step happens at all for admin.
+ * Three possible outcomes of POST /auth/login, distinguished by these
+ * two booleans (never both true at once):
+ * - requiresOtp = true      -> brand-new number (or legacy pre-password
+ *   account). Client should move to the OTP + set-password screen.
+ * - requiresPassword = true -> this number is registered. Client should
+ *   show/focus the password field and resubmit with it filled in.
+ * - both false, token set   -> login succeeded outright (admin, or a
+ *   correct password was already included in this same request).
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginInitiateResponse {
     private boolean requiresOtp;
+    private boolean requiresPassword;
     private String message;
     private String token;
     private String role;

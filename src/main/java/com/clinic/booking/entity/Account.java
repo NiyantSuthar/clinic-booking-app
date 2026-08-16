@@ -15,10 +15,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * expoPushToken is new this session - nullable, since it's only populated
- * once the app successfully registers for push notifications (which
- * itself depends on the user granting permission, and currently only
- * fully resolves on a real device build, not Expo Go - see NotificationService).
+ * passwordHash is new this session - nullable. Null means "hasn't
+ * completed registration yet" (brand-new number, or a legacy account
+ * from before this session existed) - AuthService.login() treats a null
+ * hash as the signal to start the OTP-registration flow rather than
+ * expecting a password. Never store the raw password, only the BCrypt hash.
  */
 @Entity
 @Table(name = "account")
@@ -41,6 +42,9 @@ public class Account {
 
     @Column
     private String email;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
 
     @Column(name = "expo_push_token")
     private String expoPushToken;

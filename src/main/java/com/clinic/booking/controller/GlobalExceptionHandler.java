@@ -1,8 +1,10 @@
 package com.clinic.booking.controller;
 
 import com.clinic.booking.exception.BeneficiaryNotOwnedException;
+import com.clinic.booking.exception.IncorrectPasswordException;
 import com.clinic.booking.exception.InvalidLoginIdentifierException;
 import com.clinic.booking.exception.InvalidOtpException;
+import com.clinic.booking.exception.PasswordMismatchException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -35,6 +37,16 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidLoginIdentifierException.class)
     public ResponseEntity<Map<String, String>> handleInvalidLoginIdentifier(InvalidLoginIdentifierException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(IncorrectPasswordException.class)
+    public ResponseEntity<Map<String, String>> handleIncorrectPassword(IncorrectPasswordException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    public ResponseEntity<Map<String, String>> handlePasswordMismatch(PasswordMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
     }
 }
