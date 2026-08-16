@@ -32,6 +32,7 @@ public class AuthService {
     private final AccountRepository accountRepository;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
+    private final SmsService smsService;
 
     @Value("${otp.expiry-minutes:5}")
     private int otpExpiryMinutes;
@@ -44,16 +45,6 @@ public class AuthService {
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /**
-     * The single entry point. Branches three ways:
-     * 1. Admin credentials match exactly -> ADMIN token immediately.
-     * 2. A registered account (has a passwordHash) -> validate the
-     *    supplied password, or ask for it if it wasn't sent yet.
-     * 3. No account, or an account with no passwordHash yet (brand-new
-     *    number, or a leftover pre-password-era account) -> fire an OTP
-     *    to begin registration. Any password typed in this branch is
-     *    deliberately ignored - there's nothing to check it against yet.
-     */
     public LoginInitiateResponse login(String identifier, String password) {
         if (password != null && !password.isBlank()
                 && identifier.equals(adminUsername)
@@ -89,7 +80,6 @@ public class AuthService {
         return new LoginInitiateResponse(true, false, "OTP sent to complete registration.", null, null);
     }
 
-    /** Always fires an OTP, regardless of whether a password already exists - this IS the recovery path. */
     public void forgotPassword(String phoneNumber) {
         if (!phoneNumber.matches("^[0-9]{10}$")) {
             throw new InvalidLoginIdentifierException("Enter a valid 10-digit phone number.");
@@ -98,10 +88,14 @@ public class AuthService {
     }
 
     /**
-     * STUB - see knowledge base Open Items. Logs the code instead of
-     * sending a real SMS. Real Fast2SMS integration is the very next
-     * session - this method is the one place that call gets added,
-     * nothing else in this file changes when that happens.
+     * The OTP is ALWAYS saved and ALWAYS logged to the console,
+     * regardless of sms.enabled - this is deliberate, not a leftover
+     * stub. The console log is your dev-mode "delivery channel" (free,
+     * instant, no wallet spend), and it also doubles as a safety net in
+     * production if a real SMS ever silently fails to arrive - you can
+     * still find the code in Render's logs if genuinely needed.
+     * smsService.sendOtpSms() is what conditionally adds REAL delivery
+     * on top of that, controlled by the sms.enabled flag.
      */
     private void requestOtp(String phoneNumber) {
         String otpCode = String.format("%06d", RANDOM.nextInt(1_000_000));
@@ -115,10 +109,11 @@ public class AuthService {
 
         otpVerificationRepository.save(otp);
 
-        log.info("[OTP STUB] Sending OTP {} to phone number {} (valid {} minutes)", otpCode, phoneNumber, otpExpiryMinutes);
+        log.info("[OTP] Code {} for phone number {} (valid {} minutes)", otpCode, phoneNumber, otpExpiryMinutes);
+
+        smsService.sendOtpSms(phoneNumber, otpCode);
     }
 
-    /** Handles BOTH first-time registration completion and forgot-password reset - identical effect either way. */
     @Transactional
     public VerifyOtpResponse verifyOtpAndSetPassword(String phoneNumber, String otpCode, String newPassword, String confirmPassword) {
         if (!newPassword.equals(confirmPassword)) {
