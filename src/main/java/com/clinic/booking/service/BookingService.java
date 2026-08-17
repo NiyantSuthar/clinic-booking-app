@@ -2,6 +2,7 @@ package com.clinic.booking.service;
 
 import com.clinic.booking.dto.response.BookingHistoryItemResponse;
 import com.clinic.booking.dto.response.DailyStatusResponse;
+import com.clinic.booking.dto.response.QueueScheduleEntry;
 import com.clinic.booking.entity.Beneficiary;
 import com.clinic.booking.entity.Booking;
 import com.clinic.booking.entity.DailyConfig;
@@ -20,6 +21,7 @@ import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +39,12 @@ public class BookingService {
 
     @Value("${clinic.arrival-window-text:9 AM - 12 PM}")
     private String arrivalWindowText;
+
+    @Value("${clinic.slots-per-hour:10}")
+    private int slotsPerHour;
+
+    @Value("${clinic.arrival-start-hour:9}")
+    private int arrivalStartHour;
 
     private static final int MAX_DAYS_AHEAD = 6;
 
@@ -109,15 +117,6 @@ public class BookingService {
         return new BookingResult.Success(queueNumber);
     }
 
-    /**
-     * FIXED: was @Transactional(readOnly = true). This method can trigger a
-     * WRITE via getOrCreateForDate() the first time any given date is
-     * requested (creating that date's DailyConfig row) - readOnly=true was
-     * incorrect from the start, since "get or CREATE" is not read-only by
-     * definition. Postgres enforces readOnly transactions strictly (unlike
-     * some other databases/configs that silently ignore the hint), which
-     * is exactly why this surfaced now on Neon and not necessarily before.
-     */
     @Transactional
     public DailyStatusResponse getDailyStatus(LocalDate date) {
         DailyConfig config = dailyConfigService.getOrCreateForDate(date);
@@ -131,6 +130,46 @@ public class BookingService {
                 config.getAdminCap(),
                 config.getAdminBookedCount() >= config.getAdminCap()
         );
+    }
+
+    /**
+     * Client change #2 - the "when should I arrive" reference table.
+     * Buckets patients into slotsPerHour-sized groups starting at
+     * arrivalStartHour, sized against the SELECTED DATE'S actual
+     * patientCap (not a hardcoded number) - so if a per-date cap is ever
+     * changed later, this table stays accurate automatically rather than
+     * needing a separate manual update.
+     *
+     * NOT marked readOnly - same lesson as getDailyStatus's earlier bug:
+     * getOrCreateForDate() can perform a write (creating a new
+     * DailyConfig row) the first time a date is requested.
+     */
+    @Transactional
+    public List<QueueScheduleEntry> getQueueSchedule(LocalDate date) {
+        DailyConfig config = dailyConfigService.getOrCreateForDate(date);
+        int cap = config.getPatientCap();
+        int buckets = (int) Math.ceil((double) cap / slotsPerHour);
+
+        List<QueueScheduleEntry> schedule = new ArrayList<>();
+        for (int i = 0; i < buckets; i++) {
+            int startQueue = i * slotsPerHour + 1;
+            int endQueue = Math.min((i + 1) * slotsPerHour, cap);
+            int startHour = arrivalStartHour + i;
+            int endHour = startHour + 1;
+            schedule.add(new QueueScheduleEntry(
+                    startQueue + " - " + endQueue,
+                    formatHour(startHour) + " - " + formatHour(endHour)
+            ));
+        }
+        return schedule;
+    }
+
+    private String formatHour(int hour24) {
+        int h = hour24 % 24;
+        String period = h < 12 ? "AM" : "PM";
+        int h12 = h % 12;
+        if (h12 == 0) h12 = 12;
+        return h12 + " " + period;
     }
 
     @Transactional(readOnly = true)

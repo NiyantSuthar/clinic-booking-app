@@ -11,5 +11,5 @@ public class AccountResponse {
     private Long id;
     private String phoneNumber;
     private String name;
-    private String email;
+    private String village;
 }

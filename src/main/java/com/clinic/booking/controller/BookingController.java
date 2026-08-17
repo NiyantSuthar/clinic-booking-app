@@ -4,6 +4,7 @@ import com.clinic.booking.dto.request.CreateBookingRequest;
 import com.clinic.booking.dto.response.BookingHistoryItemResponse;
 import com.clinic.booking.dto.response.BookingResponse;
 import com.clinic.booking.dto.response.DailyStatusResponse;
+import com.clinic.booking.dto.response.QueueScheduleEntry;
 import com.clinic.booking.enums.BookedBy;
 import com.clinic.booking.service.BookingService;
 import com.clinic.booking.service.result.BookingResult;
@@ -30,14 +31,6 @@ public class BookingController {
 
     private final BookingService bookingService;
 
-    /**
-     * accountId now comes from the JWT via @AuthenticationPrincipal, same
-     * pattern as BeneficiaryController - NEVER accepted as a request
-     * field. The client only ever sends WHICH beneficiary to book
-     * (beneficiaryId is still necessary, since one account can have
-     * several) - ownership of that beneficiary is verified server-side
-     * in BookingService, not trusted from the client.
-     */
     @PostMapping
     public ResponseEntity<BookingResponse> createBooking(
             @AuthenticationPrincipal Long accountId,
@@ -69,14 +62,19 @@ public class BookingController {
         throw new IllegalStateException("Unexpected BookingResult type: " + result.getClass());
     }
 
-    /** Public - a capacity check with no personal data, per the original design. */
     @GetMapping("/status")
     public ResponseEntity<DailyStatusResponse> getStatus(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return ResponseEntity.ok(bookingService.getDailyStatus(date));
     }
 
-    /** accountId now comes from the JWT - the ?accountId= query param is gone. Impossible to request another account's history now. */
+    /** Client change #2 - public, same reasoning as /status: a schedule reference, no personal data. */
+    @GetMapping("/queue-schedule")
+    public ResponseEntity<List<QueueScheduleEntry>> getQueueSchedule(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity.ok(bookingService.getQueueSchedule(date));
+    }
+
     @GetMapping("/history")
     public ResponseEntity<List<BookingHistoryItemResponse>> getHistory(@AuthenticationPrincipal Long accountId) {
         return ResponseEntity.ok(bookingService.getHistoryForAccount(accountId));

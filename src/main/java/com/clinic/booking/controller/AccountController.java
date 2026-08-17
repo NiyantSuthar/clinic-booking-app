@@ -30,10 +30,9 @@ public class AccountController {
     public ResponseEntity<AccountResponse> updateProfile(
             @AuthenticationPrincipal Long accountId,
             @Valid @RequestBody UpdateAccountRequest request) {
-        return ResponseEntity.ok(accountService.updateProfile(accountId, request.getName(), request.getEmail()));
+        return ResponseEntity.ok(accountService.updateProfile(accountId, request.getName(), request.getVillage()));
     }
 
-    /** Called once the app successfully obtains an Expo push token (see pushNotifications.js on the frontend). */
     @PutMapping("/push-token")
     public ResponseEntity<Void> updatePushToken(
             @AuthenticationPrincipal Long accountId,

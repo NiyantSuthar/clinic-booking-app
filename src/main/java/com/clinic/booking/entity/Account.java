@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * passwordHash is new this session - nullable. Null means "hasn't
- * completed registration yet" (brand-new number, or a legacy account
- * from before this session existed) - AuthService.login() treats a null
- * hash as the signal to start the OTP-registration flow rather than
- * expecting a password. Never store the raw password, only the BCrypt hash.
+ * email replaced with village this session (client change #1). Nullable
+ * at the DB level deliberately - required-ness is enforced at the DTO/
+ * validation layer instead (see UpdateAccountRequest), not a DB NOT NULL
+ * constraint, since adding a hard NOT NULL to an existing populated
+ * table can fail on deploy if any current row has no value yet.
  */
 @Entity
 @Table(name = "account")
@@ -41,7 +41,7 @@ public class Account {
     private String name;
 
     @Column
-    private String email;
+    private String village;
 
     @Column(name = "password_hash")
     private String passwordHash;

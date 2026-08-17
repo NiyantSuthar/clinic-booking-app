@@ -7,7 +7,9 @@ import com.clinic.booking.service.AdminService;
 import com.clinic.booking.service.result.BookingResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -51,14 +53,22 @@ public class AdminController {
                     .body(new BookingResponse("INVALID_DATE", null, invalidDate.message()));
         }
         if (result instanceof BookingResult.NotFound notFound) {
-            // Practically unreachable for the admin flow (AdminService always
-            // creates/find its own Beneficiary right before calling
-            // bookSlot), but BookingResult is sealed - every case must be
-            // handled for the code to compile.
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(new BookingResponse("NOT_FOUND", null, notFound.message()));
         }
 
         throw new IllegalStateException("Unexpected BookingResult type: " + result.getClass());
+    }
+
+    /** Client change #3 - generates fresh on every call, see AdminService.generateTodayPdf(). */
+    @GetMapping("/today/pdf")
+    public ResponseEntity<byte[]> downloadTodayPdf() {
+        byte[] pdf = adminService.generateTodayPdf();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "todays-patients-" + LocalDate.now() + ".pdf");
+
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 }

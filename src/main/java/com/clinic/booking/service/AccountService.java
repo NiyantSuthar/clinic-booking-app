@@ -21,12 +21,12 @@ public class AccountService {
     }
 
     @Transactional
-    public AccountResponse updateProfile(Long accountId, String name, String email) {
+    public AccountResponse updateProfile(Long accountId, String name, String village) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new IllegalStateException("Authenticated account " + accountId + " not found"));
 
         account.setName(name);
-        account.setEmail(email);
+        account.setVillage(village);
 
         Account saved = accountRepository.save(account);
         return toResponse(saved);
@@ -41,6 +41,6 @@ public class AccountService {
     }
 
     private AccountResponse toResponse(Account account) {
-        return new AccountResponse(account.getId(), account.getPhoneNumber(), account.getName(), account.getEmail());
+        return new AccountResponse(account.getId(), account.getPhoneNumber(), account.getName(), account.getVillage());
     }
 }
