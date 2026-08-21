@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/** Request body for POST /admin/bookings - a walk-in/phone-call booking, always for today. */
+/** village added - was missing from the walk-in form, so admin-created patients never had one saved. */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,4 +16,7 @@ public class AdminBookingRequest {
 
     @NotBlank(message = "phoneNumber is required")
     private String phoneNumber;
+
+    @NotBlank(message = "village is required")
+    private String village;
 }

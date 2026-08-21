@@ -34,7 +34,8 @@ public class AdminController {
 
     @PostMapping("/bookings")
     public ResponseEntity<BookingResponse> bookWalkIn(@Valid @RequestBody AdminBookingRequest request) {
-        BookingResult result = adminService.bookWalkIn(request.getName(), request.getPhoneNumber(), LocalDate.now());
+        BookingResult result = adminService.bookWalkIn(
+                request.getName(), request.getPhoneNumber(), request.getVillage(), LocalDate.now());
 
         if (result instanceof BookingResult.Success success) {
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -58,17 +59,5 @@ public class AdminController {
         }
 
         throw new IllegalStateException("Unexpected BookingResult type: " + result.getClass());
-    }
-
-    /** Client change #3 - generates fresh on every call, see AdminService.generateTodayPdf(). */
-    @GetMapping("/today/pdf")
-    public ResponseEntity<byte[]> downloadTodayPdf() {
-        byte[] pdf = adminService.generateTodayPdf();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "todays-patients-" + LocalDate.now() + ".pdf");
-
-        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 }
