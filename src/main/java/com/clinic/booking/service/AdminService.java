@@ -41,19 +41,32 @@ public class AdminService {
 
     @Transactional
     public BookingResult bookWalkIn(String name, String phoneNumber, String village, LocalDate date) {
+
         Account account = accountRepository.findByPhoneNumber(phoneNumber)
-                .orElseGet(() -> Account.builder().phoneNumber(phoneNumber).build());
+                .orElseGet(() -> Account.builder()
+                        .phoneNumber(phoneNumber)
+                        .build());
 
         account.setVillage(village);
-        account = accountRepository.save(account);
 
-        Beneficiary beneficiary = beneficiaryRepository.findByAccount_Id(account.getId()).stream()
+        Account savedAccount = accountRepository.save(account);
+
+        Beneficiary beneficiary = beneficiaryRepository.findByAccount_Id(savedAccount.getId()).stream()
                 .filter(b -> b.getName().equalsIgnoreCase(name))
                 .findFirst()
                 .orElseGet(() -> beneficiaryRepository.save(
-                        Beneficiary.builder().account(account).name(name).relation(null).build()));
+                        Beneficiary.builder()
+                                .account(savedAccount)
+                                .name(name)
+                                .relation(null)
+                                .build()));
 
-        return bookingService.bookSlot(beneficiary.getId(), date, BookedBy.ADMIN, null);
+        return bookingService.bookSlot(
+                beneficiary.getId(),
+                date,
+                BookedBy.ADMIN,
+                null
+        );
     }
 
     @Transactional(readOnly = true)
