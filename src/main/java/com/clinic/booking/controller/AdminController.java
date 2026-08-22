@@ -60,4 +60,16 @@ public class AdminController {
 
         throw new IllegalStateException("Unexpected BookingResult type: " + result.getClass());
     }
+
+    /** RESTORED - see AdminService.generateTodayPdf() for the note on why this was missing. */
+    @GetMapping("/today/pdf")
+    public ResponseEntity<byte[]> downloadTodayPdf() {
+        byte[] pdf = adminService.generateTodayPdf();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "todays-patients-" + LocalDate.now() + ".pdf");
+
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+    }
 }
